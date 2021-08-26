@@ -320,7 +320,21 @@ func (s *LocalSupervisor) BroadcastEvent(event Event) {
 
 	switch event.Name {
 	case TeleportExitEvent:
-		s.signalExit()
+		// if exit event includes a context payload, it is a "graceful" exit, and
+		// we need to hold off closing the supervisor's exit context until after
+		// the graceful context has closed.  If not, it is a hard exit and we should
+		// close the context immediately.
+		if ctx, ok := event.Payload.(context.Context); ok {
+			go func() {
+				select {
+				case <-s.exitContext.Done():
+				case <-ctx.Done():
+					s.signalExit()
+				}
+			}()
+		} else {
+			s.signalExit()
+		}
 	case TeleportReloadEvent:
 		s.signalReload()
 	}
