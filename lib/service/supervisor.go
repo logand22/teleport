@@ -75,8 +75,12 @@ type Supervisor interface {
 	RegisterEventMapping(EventMapping)
 
 	// ExitContext returns context that will be closed when
-	// TeleportExitEvent is broadcasted.
+	// a hard TeleportExitEvent is broadcasted.
 	ExitContext() context.Context
+
+	// ShutdownContext returns context that whill be closed when
+	// a graceful or hard TeleportExitEvent is broadcast.
+	ShutdownContext() context.Context
 
 	// ReloadContext returns context that will be closed when
 	// TeleportReloadEvent is broadcasted.
@@ -126,9 +130,13 @@ type LocalSupervisor struct {
 	closeContext context.Context
 	signalClose  context.CancelFunc
 
-	// exitContext is closed when someone emits Exit event
+	// exitContext is closed when someone emits a hard Exit event
 	exitContext context.Context
 	signalExit  context.CancelFunc
+
+	// shutdownContext is closed when someone emits a graceful or hard Exit event
+	shutdownContext context.Context
+	signalShutdown  context.CancelFunc
 
 	reloadContext context.Context
 	signalReload  context.CancelFunc
@@ -145,6 +153,9 @@ func NewSupervisor(id string, parentLog logrus.FieldLogger) Supervisor {
 	closeContext, cancel := context.WithCancel(context.TODO())
 
 	exitContext, signalExit := context.WithCancel(context.TODO())
+	// shutdown context is a subcontext of exit context since it should be terminate
+	// work that halts regardless of whether or not we're exiting gracefully.
+	shutdownContext, signalShutdown := context.WithCancel(exitContext)
 	reloadContext, signalReload := context.WithCancel(context.TODO())
 
 	srv := &LocalSupervisor{
@@ -158,8 +169,10 @@ func NewSupervisor(id string, parentLog logrus.FieldLogger) Supervisor {
 		closeContext: closeContext,
 		signalClose:  cancel,
 
-		exitContext: exitContext,
-		signalExit:  signalExit,
+		exitContext:     exitContext,
+		signalExit:      signalExit,
+		shutdownContext: shutdownContext,
+		signalShutdown:  signalShutdown,
 
 		reloadContext: reloadContext,
 		signalReload:  signalReload,
@@ -301,9 +314,15 @@ func (s *LocalSupervisor) Run() error {
 }
 
 // ExitContext returns context that will be closed when
-// TeleportExitEvent is broadcasted.
+// a hard TeleportExitEvent is broadcasted.
 func (s *LocalSupervisor) ExitContext() context.Context {
 	return s.exitContext
+}
+
+// ShutdownContext returns context that will be closed when
+// a hard or graceful TeleportExitEvent is broadcasted.
+func (s *LocalSupervisor) ShutdownContext() context.Context {
+	return s.shutdownContext
 }
 
 // ReloadContext returns context that will be closed when
@@ -325,6 +344,7 @@ func (s *LocalSupervisor) BroadcastEvent(event Event) {
 		// the graceful context has closed.  If not, it is a hard exit and we should
 		// close the context immediately.
 		if ctx, ok := event.Payload.(context.Context); ok {
+			s.signalShutdown()
 			go func() {
 				select {
 				case <-s.exitContext.Done():

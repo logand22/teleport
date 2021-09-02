@@ -1947,6 +1947,10 @@ func (process *TeleportProcess) initSSH() error {
 			warnOnErr(asyncEmitter.Close(), log)
 		}
 
+		if conn != nil {
+			warnOnErr(conn.Close(), log)
+		}
+
 		log.Infof("Exited.")
 	})
 
@@ -1963,13 +1967,6 @@ func (process *TeleportProcess) registerWithAuthServer(role types.SystemRole, ev
 		if err != nil {
 			return trace.Wrap(err)
 		}
-		process.OnExit(fmt.Sprintf("auth.client.%v", serviceName), func(interface{}) {
-			process.log.Debugf("Closed client for %v.", role)
-			err := connector.Client.Close()
-			if err != nil {
-				process.log.Debugf("Failed to close client: %v", err)
-			}
-		})
 		process.BroadcastEvent(Event{Name: eventName, Payload: connector})
 		return nil
 	})
@@ -2390,11 +2387,8 @@ func (process *TeleportProcess) initProxy() error {
 			return trace.BadParameter("unsupported connector type: %T", event.Payload)
 		}
 
-		err := process.initProxyEndpoint(conn)
-		if err != nil {
-			if conn.Client != nil {
-				warnOnErr(conn.Client.Close(), process.log)
-			}
+		if err := process.initProxyEndpoint(conn); err != nil {
+			warnOnErr(conn.Close(), process.log)
 			return trace.Wrap(err)
 		}
 
@@ -3141,11 +3135,7 @@ func (process *TeleportProcess) initProxyEndpoint(conn *Connector) error {
 				warnOnErr(webHandler.Close(), log)
 			}
 		}
-		// Close client after graceful shutdown has been completed,
-		// to make sure in flight streams are not terminated,
-		if conn.Client != nil {
-			warnOnErr(conn.Client.Close(), log)
-		}
+		warnOnErr(conn.Close(), log)
 		log.Infof("Exited.")
 	})
 	if err := process.initUploaderService(accessPoint, conn.Client); err != nil {
@@ -3204,6 +3194,7 @@ func (process *TeleportProcess) initApps() {
 
 	var appServer *app.Server
 	var agentPool *reversetunnel.AgentPool
+	var conn *Connector
 
 	process.RegisterCriticalFunc("apps.start", func() error {
 		var ok bool
@@ -3409,6 +3400,10 @@ func (process *TeleportProcess) initApps() {
 		}
 		if agentPool != nil {
 			agentPool.Stop()
+		}
+
+		if conn != nil {
+			warnOnErr(conn.Close(), log)
 		}
 
 		log.Infof("Exited.")

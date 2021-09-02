@@ -568,9 +568,10 @@ func (s *server) Close() error {
 }
 
 func (s *server) Shutdown(ctx context.Context) error {
+	err := s.srv.Shutdown(ctx)
 	s.cancel()
 	s.proxyWatcher.Close()
-	return s.srv.Shutdown(ctx)
+	return err
 }
 
 func (s *server) HandleNewChan(ctx context.Context, ccx *sshutils.ConnectionContext, nch ssh.NewChannel) {

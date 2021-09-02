@@ -454,8 +454,8 @@ func (s *Server) HandleConnection(conn net.Conn) {
 		return
 	}
 	// Connection successfully initiated
-	s.log.Debugf("Incoming connection %v -> %v version: %v.",
-		sconn.RemoteAddr(), sconn.LocalAddr(), string(sconn.ClientVersion()))
+	s.log.Debugf("Incoming connection %v -> %v version: %v. perms=%+v, user=%v",
+		sconn.RemoteAddr(), sconn.LocalAddr(), string(sconn.ClientVersion()), sconn.Permissions, user)
 
 	// will be called when the connection is closed
 	connClosed := func() {
