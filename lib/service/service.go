@@ -1384,7 +1384,7 @@ func (process *TeleportProcess) initAuthService() error {
 
 	heartbeat, err := srv.NewHeartbeat(srv.HeartbeatConfig{
 		Mode:      srv.HeartbeatModeAuth,
-		Context:   process.ExitContext(),
+		Context:   process.ShutdownContext(),
 		Component: teleport.ComponentAuth,
 		Announcer: authServer,
 		GetServerInfo: func() (types.Resource, error) {
@@ -1446,8 +1446,12 @@ func (process *TeleportProcess) initAuthService() error {
 			warnOnErr(tlsServer.Close(), log)
 		} else {
 			log.Info("Shutting down gracefully.")
-			ctx := payloadContext(payload, log)
-			warnOnErr(tlsServer.Shutdown(ctx), log)
+			//ctx := payloadContext(payload, log)
+			//warnOnErr(tlsServer.Shutdown(ctx), log)
+			warnOnErr(tlsServer.Close(), log)
+
+			// TODO(fspmarshall): rework tls server shutdown... the builtin http.Server.Shutdown
+			// won't work because watchers hold the connection open forever.
 		}
 		if uploadCompleter != nil {
 			warnOnErr(uploadCompleter.Close(), log)

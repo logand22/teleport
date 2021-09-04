@@ -532,7 +532,7 @@ func (process *TeleportProcess) syncRotationStateCycle() error {
 			if status.needsReload {
 				return nil
 			}
-		case <-process.ExitContext().Done():
+		case <-process.ShutdownContext().Done():
 			return nil
 		}
 	}
