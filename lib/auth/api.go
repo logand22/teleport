@@ -79,9 +79,6 @@ type ReadAccessPoint interface {
 	// GetClusterName returns cluster name
 	GetClusterName(opts ...services.MarshalOption) (types.ClusterName, error)
 
-	// GetClusterConfig returns cluster level configuration.
-	GetClusterConfig(opts ...services.MarshalOption) (types.ClusterConfig, error)
-
 	// GetClusterAuditConfig returns cluster audit configuration.
 	GetClusterAuditConfig(ctx context.Context, opts ...services.MarshalOption) (types.ClusterAuditConfig, error)
 
@@ -208,9 +205,6 @@ type AccessCache interface {
 
 	// GetCertAuthorities returns a list of cert authorities
 	GetCertAuthorities(caType types.CertAuthType, loadKeys bool, opts ...services.MarshalOption) ([]types.CertAuthority, error)
-
-	// GetClusterConfig returns cluster level configuration.
-	GetClusterConfig(opts ...services.MarshalOption) (types.ClusterConfig, error)
 
 	// GetClusterAuditConfig returns cluster audit configuration.
 	GetClusterAuditConfig(ctx context.Context, opts ...services.MarshalOption) (types.ClusterAuditConfig, error)
