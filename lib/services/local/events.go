@@ -171,10 +171,11 @@ func (w *watcher) Error() error {
 
 func (w *watcher) parseEvent(e backend.Event) ([]types.Event, []error) {
 	if e.Type == types.OpInit {
+		w.Debugf("Parsed backend event. Type=%v ItemKey=%v ItemValue=%v", e.Type, string(e.Item.Key), string(e.Item.Value))
 		return []types.Event{{Type: e.Type}}, nil
 	}
-	events := []types.Event{}
-	errs := []error{}
+	var events []types.Event
+	var errs []error
 	for _, p := range w.parsers {
 		if p.match(e.Item.Key) {
 			resource, err := p.parse(e)
@@ -186,6 +187,9 @@ func (w *watcher) parseEvent(e backend.Event) ([]types.Event, []error) {
 			if resource == nil {
 				continue
 			}
+
+			w.Debugf("Parsed backend event. Type=%v ItemKey=%v ItemValue=%v Resource=%v", e.Type, string(e.Item.Key), string(e.Item.Value), resource)
+
 			events = append(events, types.Event{Type: e.Type, Resource: resource})
 		}
 	}
