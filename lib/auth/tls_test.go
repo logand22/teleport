@@ -1051,7 +1051,7 @@ func (s *TLSSuite) TestValidateUploadSessionRecording(c *check.C) {
 	serverID, err := s.server.Identity.ID.HostID()
 	c.Assert(err, check.IsNil)
 
-	var tests = []struct {
+	tests := []struct {
 		inServerID string
 		outError   bool
 	}{
@@ -1147,7 +1147,7 @@ func (s *TLSSuite) TestValidatePostSessionSlice(c *check.C) {
 	serverID, err := s.server.Identity.ID.HostID()
 	c.Assert(err, check.IsNil)
 
-	var tests = []struct {
+	tests := []struct {
 		inServerID string
 		outError   bool
 	}{
@@ -1881,6 +1881,8 @@ func TestGenerateCerts(t *testing.T) {
 			NodeName:             srv.AuthServer.ClusterName,
 			Roles:                types.SystemRoles{types.RoleNode},
 			AdditionalPrincipals: []string{"example.com"},
+			PublicSSHKey:         pub,
+			PublicTLSKey:         pubTLS,
 		})
 	require.NoError(t, err)
 
@@ -1912,17 +1914,21 @@ func TestGenerateCerts(t *testing.T) {
 		// attempt to elevate privileges by getting admin role in the certificate
 		_, err = hostClient.GenerateServerKeys(
 			GenerateServerKeysRequest{
-				HostID:   hostID,
-				NodeName: srv.AuthServer.ClusterName,
-				Roles:    types.SystemRoles{types.RoleAdmin},
+				HostID:       hostID,
+				NodeName:     srv.AuthServer.ClusterName,
+				Roles:        types.SystemRoles{types.RoleAdmin},
+				PublicSSHKey: pub,
+				PublicTLSKey: pubTLS,
 			})
 		require.True(t, trace.IsAccessDenied(err))
 
 		// attempt to get certificate for different host id
 		_, err = hostClient.GenerateServerKeys(GenerateServerKeysRequest{
-			HostID:   "some-other-host-id",
-			NodeName: srv.AuthServer.ClusterName,
-			Roles:    types.SystemRoles{types.RoleNode},
+			HostID:       "some-other-host-id",
+			NodeName:     srv.AuthServer.ClusterName,
+			Roles:        types.SystemRoles{types.RoleNode},
+			PublicSSHKey: pub,
+			PublicTLSKey: pubTLS,
 		})
 		require.True(t, trace.IsAccessDenied(err))
 	})
@@ -2250,7 +2256,7 @@ func (s *TLSSuite) TestGenerateAppToken(c *check.C) {
 	key, err := services.GetJWTSigner(signer, ca.GetClusterName(), s.clock)
 	c.Assert(err, check.IsNil)
 
-	var tests = []struct {
+	tests := []struct {
 		inMachineRole types.SystemRole
 		inComment     check.CommentInterface
 		outError      bool
@@ -2318,7 +2324,7 @@ func (s *TLSSuite) TestCertificateFormat(c *check.C) {
 	err = s.server.Auth().UpsertPassword(user.GetName(), pass)
 	c.Assert(err, check.IsNil)
 
-	var tests = []struct {
+	tests := []struct {
 		inRoleCertificateFormat   string
 		inClientCertificateFormat string
 		outCertContainsRole       bool
