@@ -2229,7 +2229,9 @@ func (a *ServerWithRoles) DeleteAuthPreference(context.Context) error {
 // GetClusterAuditConfig gets cluster audit configuration.
 func (a *ServerWithRoles) GetClusterAuditConfig(ctx context.Context, opts ...services.MarshalOption) (types.ClusterAuditConfig, error) {
 	if err := a.action(apidefaults.Namespace, types.KindClusterAuditConfig, types.VerbRead); err != nil {
-		return nil, trace.Wrap(err)
+		if err2 := a.action(apidefaults.Namespace, metaKindClusterConfig, types.VerbRead); err2 != nil {
+			return nil, trace.Wrap(err)
+		}
 	}
 	return a.authServer.GetClusterAuditConfig(ctx, opts...)
 }
@@ -2247,7 +2249,9 @@ func (a *ServerWithRoles) DeleteClusterAuditConfig(ctx context.Context) error {
 // GetClusterNetworkingConfig gets cluster networking configuration.
 func (a *ServerWithRoles) GetClusterNetworkingConfig(ctx context.Context, opts ...services.MarshalOption) (types.ClusterNetworkingConfig, error) {
 	if err := a.action(apidefaults.Namespace, types.KindClusterNetworkingConfig, types.VerbRead); err != nil {
-		return nil, trace.Wrap(err)
+		if err2 := a.action(apidefaults.Namespace, metaKindClusterConfig, types.VerbRead); err2 != nil {
+			return nil, trace.Wrap(err)
+		}
 	}
 	return a.authServer.GetClusterNetworkingConfig(ctx, opts...)
 }
@@ -2260,7 +2264,9 @@ func (a *ServerWithRoles) SetClusterNetworkingConfig(ctx context.Context, newNet
 	}
 
 	if err := a.action(apidefaults.Namespace, types.KindClusterNetworkingConfig, verbsToReplaceResourceWithOrigin(storedNetConfig)...); err != nil {
-		return trace.Wrap(err)
+		if err2 := a.action(apidefaults.Namespace, metaKindClusterConfig, verbsToReplaceResourceWithOrigin(storedNetConfig)...); err2 != nil {
+			return trace.Wrap(err)
+		}
 	}
 
 	return a.authServer.SetClusterNetworkingConfig(ctx, newNetConfig)
@@ -2277,7 +2283,9 @@ func (a *ServerWithRoles) ResetClusterNetworkingConfig(ctx context.Context) erro
 	}
 
 	if err := a.action(apidefaults.Namespace, types.KindClusterNetworkingConfig, types.VerbUpdate); err != nil {
-		return trace.Wrap(err)
+		if err2 := a.action(apidefaults.Namespace, metaKindClusterConfig, types.VerbUpdate); err2 != nil {
+			return trace.Wrap(err)
+		}
 	}
 
 	return a.authServer.SetClusterNetworkingConfig(ctx, types.DefaultClusterNetworkingConfig())
@@ -2291,7 +2299,9 @@ func (a *ServerWithRoles) DeleteClusterNetworkingConfig(ctx context.Context) err
 // GetSessionRecordingConfig gets session recording configuration.
 func (a *ServerWithRoles) GetSessionRecordingConfig(ctx context.Context, opts ...services.MarshalOption) (types.SessionRecordingConfig, error) {
 	if err := a.action(apidefaults.Namespace, types.KindSessionRecordingConfig, types.VerbRead); err != nil {
-		return nil, trace.Wrap(err)
+		if err2 := a.action(apidefaults.Namespace, metaKindClusterConfig, types.VerbRead); err2 != nil {
+			return nil, trace.Wrap(err)
+		}
 	}
 	return a.authServer.GetSessionRecordingConfig(ctx, opts...)
 }
@@ -2304,7 +2314,9 @@ func (a *ServerWithRoles) SetSessionRecordingConfig(ctx context.Context, newRecC
 	}
 
 	if err := a.action(apidefaults.Namespace, types.KindSessionRecordingConfig, verbsToReplaceResourceWithOrigin(storedRecConfig)...); err != nil {
-		return trace.Wrap(err)
+		if err2 := a.action(apidefaults.Namespace, metaKindClusterConfig, verbsToReplaceResourceWithOrigin(storedRecConfig)...); err2 != nil {
+			return trace.Wrap(err)
+		}
 	}
 
 	return a.authServer.SetSessionRecordingConfig(ctx, newRecConfig)
@@ -2321,7 +2333,9 @@ func (a *ServerWithRoles) ResetSessionRecordingConfig(ctx context.Context) error
 	}
 
 	if err := a.action(apidefaults.Namespace, types.KindSessionRecordingConfig, types.VerbUpdate); err != nil {
-		return trace.Wrap(err)
+		if err2 := a.action(apidefaults.Namespace, metaKindClusterConfig, types.VerbUpdate); err2 != nil {
+			return trace.Wrap(err)
+		}
 	}
 
 	return a.authServer.SetSessionRecordingConfig(ctx, types.DefaultSessionRecordingConfig())
@@ -3303,3 +3317,7 @@ func verbsToReplaceResourceWithOrigin(stored types.ResourceWithOrigin) []string 
 	}
 	return verbs
 }
+
+// metaKindClusterConfig is used when checking access to cluster configuration
+// resources, as an alternative to their individual resource kinds.
+const metaKindClusterConfig = "cluster_config"
