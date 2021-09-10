@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"sort"
 	"sync"
+	"time"
 
 	"github.com/gravitational/teleport"
 	"github.com/gravitational/teleport/api/types"
@@ -205,9 +206,7 @@ func (c *CircularBuffer) fanOutEvent(r Event) {
 		if watcher.MetricComponent != "" {
 			watcherQueues.WithLabelValues(watcher.MetricComponent).Set(float64(len(watcher.eventsC)))
 		}
-		select {
-		case watcher.eventsC <- r:
-		default:
+		if !watcher.emit(r) {
 			watchersToDelete = append(watchersToDelete, watcher)
 		}
 	})
@@ -303,7 +302,12 @@ func (c *CircularBuffer) removeWatcherWithLock(watcher *BufferWatcher) {
 type BufferWatcher struct {
 	buffer *CircularBuffer
 	Watch
-	eventsC  chan Event
+	eventsC chan Event
+
+	mu           sync.Mutex
+	backlog      []Event
+	backlogSince time.Time
+
 	ctx      context.Context
 	cancel   context.CancelFunc
 	initOnce sync.Once
@@ -319,12 +323,59 @@ func (w *BufferWatcher) String() string {
 
 // Events returns events channel
 func (w *BufferWatcher) Events() <-chan Event {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.flushBacklog()
 	return w.eventsC
 }
 
 // Done channel is closed when watcher is closed
 func (w *BufferWatcher) Done() <-chan struct{} {
 	return w.ctx.Done()
+}
+
+// flushBacklog attempts to push any backlogged events into the
+// event channel.  returns true if backlog is empty.
+func (w *BufferWatcher) flushBacklog() (ok bool) {
+	for i, e := range w.backlog {
+		select {
+		case w.eventsC <- e:
+		default:
+			w.backlog = w.backlog[i:]
+			return false
+		}
+	}
+	w.backlogSince = time.Time{}
+	w.backlog = nil
+	return true
+}
+
+// emit attempts to emit an event.  returns false if the watcher has
+// exceeded the backlog grace period.
+func (w *BufferWatcher) emit(e Event) (ok bool) {
+	const gracePeriod = time.Second * 30
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	if !w.flushBacklog() {
+		if time.Now().After(w.backlogSince.Add(gracePeriod)) {
+			// backlog has existed for longer than grace period,
+			// this watcher needs to be removed.
+			return false
+		}
+		// backlog exists, but we are still within grace period.
+		w.backlog = append(w.backlog, e)
+		return true
+	}
+
+	select {
+	case w.eventsC <- e:
+	default:
+		// primary event buffer is full; start backlog.
+		w.backlog = append(w.backlog, e)
+		w.backlogSince = time.Now()
+	}
+	return true
 }
 
 // init transmits the OpInit event.  safe to double-call.
