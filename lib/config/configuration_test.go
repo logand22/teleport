@@ -266,7 +266,7 @@ func TestConfigReading(t *testing.T) {
 			KeyFile:  "/etc/teleport/proxy.key",
 			CertFile: "/etc/teleport/proxy.crt",
 			KeyPairs: []KeyPair{
-				KeyPair{
+				{
 					PrivateKey:  "/etc/teleport/proxy.key",
 					Certificate: "/etc/teleport/proxy.crt",
 				},
@@ -287,12 +287,19 @@ func TestConfigReading(t *testing.T) {
 				EnabledFlag: "yes",
 			},
 			Apps: []*App{
-				&App{
+				{
 					Name:          "foo",
 					URI:           "http://127.0.0.1:8080",
 					PublicAddr:    "foo.example.com",
 					StaticLabels:  Labels,
 					DynamicLabels: CommandLabels,
+				},
+			},
+			Selectors: []Selector{
+				{
+					MatchLabels: map[string]apiutils.Strings{
+						"*": {"*"},
+					},
 				},
 			},
 		},
@@ -323,7 +330,7 @@ func TestConfigReading(t *testing.T) {
 				EnabledFlag:   "yes",
 			},
 			KeyPairs: []KeyPair{
-				KeyPair{
+				{
 					PrivateKey:  "/etc/teleport/proxy.key",
 					Certificate: "/etc/teleport/proxy.crt",
 				},
@@ -969,7 +976,7 @@ func makeConfigFixture() string {
 	conf.Proxy.KeyFile = "/etc/teleport/proxy.key"
 	conf.Proxy.CertFile = "/etc/teleport/proxy.crt"
 	conf.Proxy.KeyPairs = []KeyPair{
-		KeyPair{
+		{
 			PrivateKey:  "/etc/teleport/proxy.key",
 			Certificate: "/etc/teleport/proxy.crt",
 		},
@@ -991,12 +998,17 @@ func makeConfigFixture() string {
 	// Application service.
 	conf.Apps.EnabledFlag = "yes"
 	conf.Apps.Apps = []*App{
-		&App{
+		{
 			Name:          "foo",
 			URI:           "http://127.0.0.1:8080",
 			PublicAddr:    "foo.example.com",
 			StaticLabels:  Labels,
 			DynamicLabels: CommandLabels,
+		},
+	}
+	conf.Apps.Selectors = []Selector{
+		{
+			MatchLabels: map[string]apiutils.Strings{"*": {"*"}},
 		},
 	}
 
@@ -1022,7 +1034,7 @@ func makeConfigFixture() string {
 	conf.Metrics.ListenAddress = "tcp://metrics"
 	conf.Metrics.CACerts = []string{"/etc/teleport/ca.crt"}
 	conf.Metrics.KeyPairs = []KeyPair{
-		KeyPair{
+		{
 			PrivateKey:  "/etc/teleport/proxy.key",
 			Certificate: "/etc/teleport/proxy.crt",
 		},
@@ -1286,6 +1298,9 @@ app_service:
       name: foo
       public_addr: "foo.example.com"
       uri: "http://127.0.0.1:8080"
+  selectors:
+  - match_labels:
+    '*': '*'
 `,
 			inComment: "config is valid",
 			outError:  false,
