@@ -2203,7 +2203,7 @@ func (process *TeleportProcess) initDiagnosticService() error {
 			select {
 			case e := <-eventCh:
 				ps.update(e)
-			case <-process.ExitContext().Done():
+			case <-process.ShutdownContext().Done():
 				log.Debugf("Teleport is exiting, returning.")
 				return nil
 			}
