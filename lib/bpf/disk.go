@@ -81,7 +81,7 @@ func startOpen(bufferSize int) (*open, error) {
 
 	o := &open{}
 
-	diskBPF, err := embedFS.ReadFile("bytecode/disk.bpf.o")
+	diskBPF, err := teleport.EmbedFS().ReadFile("bytecode/disk.bpf.o")
 	if err != nil {
 		return nil, trace.Wrap(err)
 	}

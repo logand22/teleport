@@ -85,7 +85,7 @@ func startExec(bufferSize int) (*exec, error) {
 
 	e := &exec{}
 
-	commandBPF, err := embedFS.ReadFile("bytecode/command.bpf.o")
+	commandBPF, err := teleport.EmbedFS().ReadFile("bytecode/command.bpf.o")
 	if err != nil {
 		return nil, trace.Wrap(err)
 	}

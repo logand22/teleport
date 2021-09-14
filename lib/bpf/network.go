@@ -110,7 +110,7 @@ func startConn(bufferSize int) (*conn, error) {
 
 	c := &conn{}
 
-	networkBPF, err := embedFS.ReadFile("bytecode/network.bpf.o")
+	networkBPF, err := teleport.EmbedFS().ReadFile("bytecode/network.bpf.o")
 	if err != nil {
 		return nil, trace.Wrap(err)
 	}
