@@ -1,4 +1,4 @@
-// +build bpf,!386
+//go:build bpf && !386
 
 /*
 Copyright 2019 Gravitational, Inc.
@@ -85,7 +85,7 @@ func startExec(bufferSize int) (*exec, error) {
 
 	e := &exec{}
 
-	commandBPF, err := teleport.EmbedFS().ReadFile("bytecode/command.bpf.o")
+	commandBPF, err := teleport.EmbedFS().ReadFile("embed.assets/command.bpf.o")
 	if err != nil {
 		return nil, trace.Wrap(err)
 	}

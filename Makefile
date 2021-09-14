@@ -21,7 +21,7 @@ ifneq ("$(wildcard /bin/bash)","")
 SHELL := /bin/bash -o pipefail
 endif
 BUILDDIR ?= build
-ASSETS_BUILDDIR ?= lib/web/build
+ASSETS_BUILDDIR ?= embed.assets
 BINDIR ?= /usr/local/bin
 DATADIR ?= /usr/local/share/teleport
 ADDFLAGS ?=
@@ -92,8 +92,6 @@ CLANG_FORMAT ?= $(shell which clang-format || which clang-format-10)
 LLVM_STRIP ?= $(shell which llvm-strip || which llvm-strip-10)
 KERNEL_ARCH := $(shell uname -m | sed 's/x86_64/x86/')
 INCLUDES :=
-ER_BPF_BUILDDIR := lib/bpf/bytecode
-RS_BPF_BUILDDIR := lib/restrictedsession/bytecode
 
 # Get Clang's default includes on this system. We'll explicitly add these dirs
 # to the includes list when compiling with `-target bpf` because otherwise some
@@ -186,27 +184,27 @@ $(BUILDDIR)/tsh:
 # Requires a recent version of clang and libbpf installed.
 #
 ifeq ("$(with_bpf)","yes")
-$(ER_BPF_BUILDDIR):
-	mkdir -p $(ER_BPF_BUILDDIR)
+$(ASSETS_BUILDDIR):
+	mkdir -p $(ASSETS_BUILDDIR)
 
-$(RS_BPF_BUILDDIR):
-	mkdir -p $(RS_BPF_BUILDDIR)
+$(ASSETS_BUILDDIR):
+	mkdir -p $(ASSETS_BUILDDIR)
 
 # Build BPF code
-$(ER_BPF_BUILDDIR)/%.bpf.o: bpf/enhancedrecording/%.bpf.c $(wildcard bpf/*.h) | $(ER_BPF_BUILDDIR)
+$(ASSETS_BUILDDIR)/%.bpf.o: bpf/enhancedrecording/%.bpf.c $(wildcard bpf/*.h) | $(ASSETS_BUILDDIR)
 	$(CLANG) -g -O2 -target bpf -D__TARGET_ARCH_$(KERNEL_ARCH) $(INCLUDES) $(CLANG_BPF_SYS_INCLUDES) -c $(filter %.c,$^) -o $@
 	$(LLVM_STRIP) -g $@ # strip useless DWARF info
 
 # Build BPF code
-$(RS_BPF_BUILDDIR)/%.bpf.o: bpf/restrictedsession/%.bpf.c $(wildcard bpf/*.h) | $(RS_BPF_BUILDDIR)
+$(ASSETS_BUILDDIR)/%.bpf.o: bpf/restrictedsession/%.bpf.c $(wildcard bpf/*.h) | $(ASSETS_BUILDDIR)
 	$(CLANG) -g -O2 -target bpf -D__TARGET_ARCH_$(KERNEL_ARCH) $(INCLUDES) $(CLANG_BPF_SYS_INCLUDES) -c $(filter %.c,$^) -o $@
 	$(LLVM_STRIP) -g $@ # strip useless DWARF info
 
 .PHONY: bpf-rs-bytecode
-bpf-rs-bytecode: $(RS_BPF_BUILDDIR)/restricted.bpf.o
+bpf-rs-bytecode: $(ASSETS_BUILDDIR)/restricted.bpf.o
 
 .PHONY: bpf-er-bytecode
-bpf-er-bytecode: $(ER_BPF_BUILDDIR)/command.bpf.o $(ER_BPF_BUILDDIR)/disk.bpf.o $(ER_BPF_BUILDDIR)/network.bpf.o $(ER_BPF_BUILDDIR)/counter_test.bpf.o
+bpf-er-bytecode: $(ASSETS_BUILDDIR)/command.bpf.o $(ASSETS_BUILDDIR)/disk.bpf.o $(ASSETS_BUILDDIR)/network.bpf.o $(ASSETS_BUILDDIR)/counter_test.bpf.o
 
 .PHONY: bpf-bytecode
 bpf-bytecode: bpf-er-bytecode bpf-rs-bytecode
@@ -263,8 +261,8 @@ endif
 clean:
 	@echo "---> Cleaning up OSS build artifacts."
 	rm -rf $(BUILDDIR)
-	rm -rf $(ER_BPF_BUILDDIR)
-	rm -rf $(RS_BPF_BUILDDIR)
+	rm -rf $(ASSETS_BUILDDIR)
+	rm -rf $(ASSETS_BUILDDIR)
 	-go clean -cache
 	rm -rf $(GOPKGDIR)
 	rm -rf teleport

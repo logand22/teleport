@@ -1,5 +1,4 @@
 //go:build bpf && !386
-// +build bpf,!386
 
 /*
 Copyright 2020 Gravitational, Inc.
@@ -92,7 +91,7 @@ func New(config *Config, wc RestrictionsWatcherClient) (Manager, error) {
 
 	log.Debugf("Starting restricted session.")
 
-	restrictedBPF, err := teleport.EmbedFS().ReadFile("bytecode/restricted.bpf.o")
+	restrictedBPF, err := teleport.EmbedFS().ReadFile("embed.assets/restricted.bpf.o")
 	if err != nil {
 		return nil, trace.Wrap(err)
 	}

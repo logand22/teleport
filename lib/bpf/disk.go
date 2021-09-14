@@ -1,4 +1,4 @@
-// +build bpf,!386
+//go:build bpf && !386
 
 /*
 Copyright 2019 Gravitational, Inc.
@@ -81,7 +81,7 @@ func startOpen(bufferSize int) (*open, error) {
 
 	o := &open{}
 
-	diskBPF, err := teleport.EmbedFS().ReadFile("bytecode/disk.bpf.o")
+	diskBPF, err := teleport.EmbedFS().ReadFile("embed.assets/disk.bpf.o")
 	if err != nil {
 		return nil, trace.Wrap(err)
 	}

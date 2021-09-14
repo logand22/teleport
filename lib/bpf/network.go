@@ -1,4 +1,4 @@
-// +build bpf,!386
+//go:build bpf && !386
 
 /*
 Copyright 2019 Gravitational, Inc.
@@ -110,7 +110,7 @@ func startConn(bufferSize int) (*conn, error) {
 
 	c := &conn{}
 
-	networkBPF, err := teleport.EmbedFS().ReadFile("bytecode/network.bpf.o")
+	networkBPF, err := teleport.EmbedFS().ReadFile("embed.assets/network.bpf.o")
 	if err != nil {
 		return nil, trace.Wrap(err)
 	}

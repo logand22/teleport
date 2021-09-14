@@ -1,4 +1,4 @@
-// +build webassets_embed
+//go:build webassets_embed
 
 /*
 Copyright 2021 Gravitational, Inc.
@@ -29,7 +29,7 @@ import (
 // NewStaticFileSystem returns the initialized implementation of http.FileSystem
 // interface which can be used to serve Teleport Proxy Web UI
 func NewStaticFileSystem() (http.FileSystem, error) {
-	wfs, err := fs.Sub(teleport.EmbedFS(), "build/webassets")
+	wfs, err := fs.Sub(teleport.EmbedFS(), "embed.assets")
 	if err != nil {
 		return nil, trace.Wrap(err)
 	}

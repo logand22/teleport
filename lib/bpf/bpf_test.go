@@ -1,4 +1,4 @@
-// +build bpf,!386
+//go:build bpf && !386
 
 /*
 Copyright 2019 Gravitational, Inc.
@@ -396,7 +396,7 @@ func (s *Suite) TestBPFCounter(c *check.C) {
 		c.Skip(fmt.Sprintf("Tests for package bpf can not be run: %v.", err))
 	}
 
-	counterTestBPF, err := teleport.EmbedFS().ReadFile("bytecode/counter_test.bpf.o")
+	counterTestBPF, err := teleport.EmbedFS().ReadFile("embed.assets/counter_test.bpf.o")
 	if err != nil {
 		c.Skip(fmt.Sprintf("Tests for package bpf can not be run: %v.", err))
 	}
