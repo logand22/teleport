@@ -1833,7 +1833,7 @@ func (a *Server) RegisterUsingToken(req RegisterUsingTokenRequest) (*proto.Certs
 	// If the request uses Simplified Node Joining (EC2IdentityDocument is
 	// included), check that the identity is valid and matches the token allow
 	// rules.
-	err := a.CheckEC2Request(req)
+	err := a.CheckEC2Request(context.Background(), req)
 	if err != nil {
 		return nil, trace.Wrap(err)
 	}
