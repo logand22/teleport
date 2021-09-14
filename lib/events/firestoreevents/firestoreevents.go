@@ -475,7 +475,7 @@ func (l *Log) SearchEvents(fromUTC, toUTC time.Time, namespace string, eventType
 	var events []apievents.AuditEvent
 	var estimatedSize int
 	checkpoint := startKey
-	limitBytes := 1024*1024
+	limitBytes := 1024 * 1024
 	left := limit
 
 	for left > 0 && estimatedSize <= limitBytes {

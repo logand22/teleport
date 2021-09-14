@@ -716,8 +716,8 @@ func (b *Backend) getIndexParent() string {
 
 func (b *Backend) ensureIndexes(adminSvc *apiv1.FirestoreAdminClient) error {
 	tuples := []*IndexTuple{{
-		FirstField:  keyDocProperty,
-		SecondField: expiresDocProperty,
+		FirstField:       keyDocProperty,
+		SecondField:      expiresDocProperty,
 		SecondFieldOrder: adminpb.Index_IndexField_ASCENDING,
 	}}
 	return EnsureIndexes(b.clientContext, adminSvc, tuples, b.getIndexParent())
@@ -773,7 +773,7 @@ func EnsureIndexes(ctx context.Context, adminSvc *apiv1.FirestoreAdminClient, tu
 	}
 
 	for i, operation := range tasks {
-		err := waitOnIndexCreation(l, ctx, operation, tuples[i])
+		err := waitOnIndexCreation(ctx, l, operation, tuples[i])
 		if err != nil {
 			return trace.Wrap(err)
 		}
@@ -782,7 +782,7 @@ func EnsureIndexes(ctx context.Context, adminSvc *apiv1.FirestoreAdminClient, tu
 	return nil
 }
 
-func waitOnIndexCreation(l *log.Entry, ctx context.Context, operation *apiv1.CreateIndexOperation, tuple *IndexTuple) error {
+func waitOnIndexCreation(ctx context.Context, l *log.Entry, operation *apiv1.CreateIndexOperation, tuple *IndexTuple) error {
 	meta, err := operation.Metadata()
 	if err != nil {
 		return trace.Wrap(err)
