@@ -472,6 +472,28 @@ func (l *Log) GetSessionEvents(namespace string, sid session.ID, after int, inlc
 //
 // This function may never return more than 1 MiB of event data.
 func (l *Log) SearchEvents(fromUTC, toUTC time.Time, namespace string, eventTypes []string, limit int, order types.EventOrder, startKey string) ([]apievents.AuditEvent, string, error) {
+	var events []apievents.AuditEvent
+	var estimatedSize int
+	checkpoint := startKey
+	limitBytes := 1024*1024
+	left := limit
+
+	for left > 0 && estimatedSize < limitBytes {
+		gotEvents, withSize, withCheckpoint, err := l.searchEventsOnce(fromUTC, toUTC, namespace, eventTypes, left, order, checkpoint)
+		if nil != err {
+			return nil, "", trace.Wrap(err)
+		}
+
+		events = append(events, gotEvents...)
+		estimatedSize += withSize
+		left -= len(gotEvents)
+		checkpoint = withCheckpoint
+	}
+
+	return events, checkpoint, nil
+}
+
+func (l *Log) searchEventsOnce(fromUTC, toUTC time.Time, namespace string, eventTypes []string, limit int, order types.EventOrder, startKey string) ([]apievents.AuditEvent, int, string, error) {
 	g := l.WithFields(log.Fields{"From": fromUTC, "To": toUTC, "Namespace": namespace, "EventTypes": eventTypes, "Limit": limit, "StartKey": startKey})
 	doFilter := len(eventTypes) > 0
 
@@ -485,7 +507,7 @@ func (l *Log) SearchEvents(fromUTC, toUTC time.Time, namespace string, eventType
 	if startKey != "" {
 		parsedStartKey, err = strconv.ParseInt(startKey, 10, 64)
 		if err != nil {
-			return nil, "", trace.WrapWithMessage(err, "failed to parse startKey, expected integer but found: %q", startKey)
+			return nil, 0, "", trace.WrapWithMessage(err, "failed to parse startKey, expected integer but found: %q", startKey)
 		}
 	}
 
@@ -504,7 +526,7 @@ func (l *Log) SearchEvents(fromUTC, toUTC time.Time, namespace string, eventType
 	case types.EventOrderDescending:
 		firestoreOrdering = firestore.Desc
 	default:
-		return nil, "", trace.BadParameter("invalid event order: %v", order)
+		return nil, 0, "", trace.BadParameter("invalid event order: %v", order)
 	}
 
 	start := time.Now()
@@ -518,7 +540,7 @@ func (l *Log) SearchEvents(fromUTC, toUTC time.Time, namespace string, eventType
 	batchReadLatencies.Observe(time.Since(start).Seconds())
 	batchReadRequests.Inc()
 	if err != nil {
-		return nil, "", firestorebk.ConvertGRPCError(err)
+		return nil, 0, "", firestorebk.ConvertGRPCError(err)
 	}
 
 	// Correctly detecting if you've reached the end of a query in firestore is
@@ -535,13 +557,13 @@ func (l *Log) SearchEvents(fromUTC, toUTC time.Time, namespace string, eventType
 		var e event
 		err = docSnap.DataTo(&e)
 		if err != nil {
-			return nil, "", firestorebk.ConvertGRPCError(err)
+			return nil, 0, "", firestorebk.ConvertGRPCError(err)
 		}
 
 		var fields events.EventFields
 		data := []byte(e.Fields)
 		if err := json.Unmarshal(data, &fields); err != nil {
-			return nil, "", trace.Errorf("failed to unmarshal event %v", err)
+			return nil, 0, "", trace.Errorf("failed to unmarshal event %v", err)
 		}
 		var accepted bool
 		for i := range eventTypes {
@@ -571,7 +593,7 @@ func (l *Log) SearchEvents(fromUTC, toUTC time.Time, namespace string, eventType
 	case types.EventOrderDescending:
 		toSort = sort.Reverse(events.ByTimeAndIndex(values))
 	default:
-		return nil, "", trace.BadParameter("invalid event order: %v", order)
+		return nil, 0, "", trace.BadParameter("invalid event order: %v", order)
 	}
 	sort.Sort(toSort)
 
@@ -579,7 +601,7 @@ func (l *Log) SearchEvents(fromUTC, toUTC time.Time, namespace string, eventType
 	for _, fields := range values {
 		event, err := events.FromEventFields(fields)
 		if err != nil {
-			return nil, "", trace.Wrap(err)
+			return nil, 0, "", trace.Wrap(err)
 		}
 		eventArr = append(eventArr, event)
 	}
@@ -589,7 +611,7 @@ func (l *Log) SearchEvents(fromUTC, toUTC time.Time, namespace string, eventType
 		lastKeyString = fmt.Sprintf("%d", lastKey)
 	}
 
-	return eventArr, lastKeyString, nil
+	return eventArr, totalSize, lastKeyString, nil
 }
 
 // SearchSessionEvents returns session related events only. This is used to
