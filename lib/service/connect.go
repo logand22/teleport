@@ -17,7 +17,9 @@ limitations under the License.
 package service
 
 import (
+	"context"
 	"crypto/tls"
+	"io"
 	"path/filepath"
 	"time"
 
@@ -40,6 +42,8 @@ import (
 
 	"github.com/gravitational/trace"
 
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/feature/ec2/imds"
 	"github.com/sirupsen/logrus"
 )
 
@@ -327,6 +331,64 @@ func (process *TeleportProcess) reRegister(conn *Connector, additionalPrincipals
 	return identity, nil
 }
 
+const testRSA2048 = `MIAGCSqGSIb3DQEHAqCAMIACAQExDzANBglghkgBZQMEAgEFADCABgkqhkiG9w0BBwGggCSABIIB
+23sKICAiYWNjb3VudElkIiA6ICIyNzg1NzYyMjA0NTMiLAogICJhcmNoaXRlY3R1cmUiIDogIng4
+Nl82NCIsCiAgImF2YWlsYWJpbGl0eVpvbmUiIDogInVzLXdlc3QtMmEiLAogICJiaWxsaW5nUHJv
+ZHVjdHMiIDogbnVsbCwKICAiZGV2cGF5UHJvZHVjdENvZGVzIiA6IG51bGwsCiAgIm1hcmtldHBs
+YWNlUHJvZHVjdENvZGVzIiA6IG51bGwsCiAgImltYWdlSWQiIDogImFtaS0wZmE5ZTFmNjQxNDJj
+ZGUxNyIsCiAgImluc3RhbmNlSWQiIDogImktMDc4NTE3Y2E4YTcwYTFkZGUiLAogICJpbnN0YW5j
+ZVR5cGUiIDogInQyLm1lZGl1bSIsCiAgImtlcm5lbElkIiA6IG51bGwsCiAgInBlbmRpbmdUaW1l
+IiA6ICIyMDIxLTA5LTAzVDIxOjI1OjQ0WiIsCiAgInByaXZhdGVJcCIgOiAiMTAuMC4wLjIwOSIs
+CiAgInJhbWRpc2tJZCIgOiBudWxsLAogICJyZWdpb24iIDogInVzLXdlc3QtMiIsCiAgInZlcnNp
+b24iIDogIjIwMTctMDktMzAiCn0AAAAAAAAxggIvMIICKwIBATBpMFwxCzAJBgNVBAYTAlVTMRkw
+FwYDVQQIExBXYXNoaW5ndG9uIFN0YXRlMRAwDgYDVQQHEwdTZWF0dGxlMSAwHgYDVQQKExdBbWF6
+b24gV2ViIFNlcnZpY2VzIExMQwIJALZL3lrQCSTMMA0GCWCGSAFlAwQCAQUAoIGYMBgGCSqGSIb3
+DQEJAzELBgkqhkiG9w0BBwEwHAYJKoZIhvcNAQkFMQ8XDTIxMDkwMzIxMjU0N1owLQYJKoZIhvcN
+AQk0MSAwHjANBglghkgBZQMEAgEFAKENBgkqhkiG9w0BAQsFADAvBgkqhkiG9w0BCQQxIgQgCH2d
+JiKmdx9uhxlm8ObWAvFOhqJb7k79+DW/T3ezwVUwDQYJKoZIhvcNAQELBQAEggEANWautigs/qZ6
+w8g5/EfWsAFj8kHgUD+xqsQ1HDrBUx3IQ498NMBZ78379B8RBfuzeVjbaf+yugov0fYrDbGvSRRw
+myy49TfZ9gdlpWQXzwSg3OPMDNToRoKw00/LQjSxcTCaPP4vMDEIjYMUqZ3i4uWYJJJ0Lb7fDMDk
+Anu7yHolVfbnvIAuZe8lGpc7ofCSBG5wulm+/pqzO25YPMH1cLEvOadE+3N2GxK6gRTLJoE98rsm
+LDp6OuU/b2QfaxU0ec6OogdtSJto/URI0/ygHmNAzBis470A29yh5nVwm6AkY4krjPsK7uiBIRhs
+lr5x0X6+ggQfF2BKAJ/BRcAHNgAAAAAAAA==`
+
+func getIdentityDocument() ([]byte, error) {
+	return []byte(testRSA2048), nil
+	cfg, err := config.LoadDefaultConfig(context.TODO())
+	if err != nil {
+		return nil, trace.Wrap(err)
+	}
+	imdsClient := imds.NewFromConfig(cfg)
+	output, err := imdsClient.GetDynamicData(context.TODO(), &imds.GetDynamicDataInput{
+		Path: "instance-identity/rsa2048",
+	})
+	if err != nil {
+		return nil, trace.Wrap(err)
+	}
+	iidBytes, err := io.ReadAll(output.Content)
+	if err != nil {
+		return nil, trace.Wrap(err)
+	}
+	if err := output.Content.Close(); err != nil {
+		return nil, trace.Wrap(err)
+	}
+	return iidBytes, nil
+}
+
+func getEC2ID() (string, error) {
+	return "278576220453-i-078517ca8a70a1dde", nil
+	cfg, err := config.LoadDefaultConfig(context.TODO())
+	if err != nil {
+		return "", trace.Wrap(err)
+	}
+	imdsClient := imds.NewFromConfig(cfg)
+	iid, err := imdsClient.GetInstanceIdentityDocument(context.TODO(), nil)
+	if err != nil {
+		return "", trace.Wrap(err)
+	}
+	return iid.AccountID + "-" + iid.InstanceID, nil
+}
+
 func (process *TeleportProcess) firstTimeConnect(role types.SystemRole) (*Connector, error) {
 	id := auth.IdentityID{
 		Role:     role,
@@ -347,10 +409,23 @@ func (process *TeleportProcess) firstTimeConnect(role types.SystemRole) (*Connec
 			return nil, trace.Wrap(err)
 		}
 	} else {
+		token := process.Config.Token
+		if process.Config.AWSToken != "" {
+			token = process.Config.AWSToken
+		}
 		// Auth server is remote, so we need a provisioning token.
-		if process.Config.Token == "" {
+		if token == "" {
 			return nil, trace.BadParameter("%v must join a cluster and needs a provisioning token", role)
 		}
+
+		var ec2IdentityDocument []byte
+		if process.Config.AWSToken != "" {
+			ec2IdentityDocument, err = getIdentityDocument()
+			if err != nil {
+				return nil, trace.Wrap(err)
+			}
+		}
+
 		process.log.Infof("Joining the cluster with a secure token.")
 		const reason = "first-time-connect"
 		keyPair, err := process.generateKeyPair(role, reason)
@@ -359,7 +434,7 @@ func (process *TeleportProcess) firstTimeConnect(role types.SystemRole) (*Connec
 		}
 
 		identity, err = auth.Register(auth.RegisterParams{
-			Token:                process.Config.Token,
+			Token:                token,
 			ID:                   id,
 			Servers:              process.Config.AuthServers,
 			AdditionalPrincipals: additionalPrincipals,
@@ -372,6 +447,7 @@ func (process *TeleportProcess) firstTimeConnect(role types.SystemRole) (*Connec
 			CAPath:               filepath.Join(defaults.DataDir, defaults.CACertFile),
 			GetHostCredentials:   client.HostCredentials,
 			Clock:                process.Clock,
+			EC2IdentityDocument:  ec2IdentityDocument,
 		})
 		if err != nil {
 			return nil, trace.Wrap(err)

@@ -547,6 +547,21 @@ func (s *AuthSuite) TestUserLock(c *C) {
 	c.Assert(err, IsNil)
 }
 
+func (s *AuthSuite) TestSimplifiedNodeJoin(c *C) {
+	token, err := types.NewProvisionTokenFromSpec(
+		"test_token",
+		time.Now().Add(time.Minute),
+		types.ProvisionTokenSpecV2{
+			Roles: types.SystemRole{types.RoleNode},
+			Allow: types.TokenRule{
+				AWSAccount: "123",
+				AWSRegions: []string{"us-west-2"},
+				AWSRole:    "asdf",
+			},
+		})
+	c.Assert(err, IsNil)
+}
+
 func (s *AuthSuite) TestTokensCRUD(c *C) {
 	ctx := context.Background()
 
