@@ -478,7 +478,7 @@ func (l *Log) SearchEvents(fromUTC, toUTC time.Time, namespace string, eventType
 	limitBytes := 1024*1024
 	left := limit
 
-	for left > 0 && estimatedSize < limitBytes {
+	for left > 0 && estimatedSize <= limitBytes {
 		gotEvents, withSize, withCheckpoint, err := l.searchEventsOnce(fromUTC, toUTC, namespace, eventTypes, left, order, checkpoint)
 		if nil != err {
 			return nil, "", trace.Wrap(err)
